@@ -10,17 +10,15 @@ on:
         required: true
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
-  publish:
+  package:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Verify static export
         env:
@@ -38,5 +36,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
