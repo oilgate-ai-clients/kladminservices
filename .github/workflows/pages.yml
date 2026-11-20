@@ -1,0 +1,42 @@
+name: Deploy static KLAS release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Static release tag
+        required: true
+      sha256:
+        description: SHA-256 of the exported archive
+        required: true
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Verify static export
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          DIGEST: ${{ inputs.sha256 }}
+        run: |
+          [[ "$TAG" =~ ^build-[a-f0-9]{7,40}(-[0-9]+)?$ ]]
+          [[ "$DIGEST" =~ ^[a-f0-9]{64}$ ]]
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern site.tar.gz
+          echo "$DIGEST  site.tar.gz" | sha256sum -c -
+          mkdir site
+          tar -xzf site.tar.gz --directory site
+          test -f site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
